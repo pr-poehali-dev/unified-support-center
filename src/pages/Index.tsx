@@ -6,110 +6,140 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 
-const HERO_IMG = 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/e559307e-43cc-4aac-9b6d-4bd7d35ee19d.jpg';
+const HERO_IMG = 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/a6f45dab-8c6e-4bb8-99c8-880240468dc5.jpg';
 
+// Среднегодовой рост 120%: каждый следующий месяц ~на 10% больше предыдущего
 const chartBars = [
-  { label: 'Янв', value: 38 },
-  { label: 'Фев', value: 52 },
-  { label: 'Мар', value: 61 },
-  { label: 'Апр', value: 47 },
-  { label: 'Май', value: 75 },
-  { label: 'Июн', value: 88 },
+  { label: 'Янв', value: 32 },
+  { label: 'Фев', value: 40 },
+  { label: 'Мар', value: 50 },
+  { label: 'Апр', value: 58 },
+  { label: 'Май', value: 68 },
+  { label: 'Июн', value: 80 },
   { label: 'Июл', value: 95 },
 ];
 
 const AnimatedChart = () => {
-  const [progress, setProgress] = useState(0);
-  const [lineProgress, setLineProgress] = useState(0);
+  const [barProgress, setBarProgress] = useState<number[]>(chartBars.map(() => 0));
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let start: number | null = null;
-    const duration = 1800;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const elapsed = ts - start;
-      const p = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setProgress(eased);
-      setLineProgress(eased);
-      if (p < 1) rafRef.current = requestAnimationFrame(animate);
-    };
-    const timer = setTimeout(() => {
-      rafRef.current = requestAnimationFrame(animate);
-    }, 400);
+    // Каждый столбик появляется последовательно — визуальный эффект роста слева направо
+    chartBars.forEach((_, i) => {
+      const delay = 500 + i * 280;
+      const barDuration = 900;
+      let start: number | null = null;
+
+      const animateBar = (ts: number) => {
+        if (!start) start = ts;
+        const elapsed = ts - start;
+        const p = Math.min(elapsed / barDuration, 1);
+        const eased = 1 - Math.pow(1 - p, 2.5);
+        setBarProgress(prev => {
+          const next = [...prev];
+          next[i] = eased;
+          return next;
+        });
+        if (p < 1) requestAnimationFrame(animateBar);
+      };
+
+      const t = setTimeout(() => {
+        requestAnimationFrame(animateBar);
+      }, delay);
+
+      return () => clearTimeout(t);
+    });
+
     return () => {
-      clearTimeout(timer);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
   const maxVal = Math.max(...chartBars.map(b => b.value));
+
+  // SVG линия тренда — полностью появляется когда все столбики выросли
+  const lineReady = barProgress[chartBars.length - 1] > 0.98;
   const w = 280;
-  const h = 90;
+  const h = 72;
   const pts = chartBars.map((b, i) => {
     const x = (i / (chartBars.length - 1)) * w;
-    const y = h - (b.value / maxVal) * h;
-    return `${x},${y}`;
+    const y = h - (b.value / maxVal) * h * 0.9 + h * 0.05;
+    return [x, y] as [number, number];
   });
-  const lineD = `M ${pts.join(' L ')}`;
 
   return (
-    <div className="absolute bottom-5 left-5 right-5 glass rounded-2xl p-4 shadow-lg">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold text-foreground/80 font-display">Рост проектов</span>
-        <span className="text-xs font-semibold text-green-600 flex items-center gap-1">
-          <Icon name="TrendingUp" size={13} /> +148% за год
+    <div className="absolute bottom-4 left-4 right-4 glass rounded-2xl p-4 shadow-xl">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold text-foreground/80 font-display tracking-wide">Среднегодовой рост</span>
+        <span className="text-xs font-bold text-green-600 flex items-center gap-1 bg-green-100 px-2 py-0.5 rounded-full">
+          <Icon name="TrendingUp" size={12} /> +120% в год
         </span>
       </div>
-      <div className="flex items-end gap-1.5 h-16 mb-2">
+
+      {/* Столбчатая диаграмма */}
+      <div className="flex items-end gap-1.5 h-14 mb-1">
         {chartBars.map((b, i) => (
-          <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
+          <div key={b.label} className="flex-1 flex flex-col justify-end h-full">
             <div
-              className="w-full rounded-t-md transition-none"
               style={{
-                height: `${(b.value / maxVal) * 100 * progress}%`,
+                height: `${(b.value / maxVal) * 100 * barProgress[i]}%`,
                 background: i === chartBars.length - 1
-                  ? 'linear-gradient(to top, hsl(14 90% 52%), hsl(38 96% 54%))'
-                  : 'linear-gradient(to top, hsl(14 90% 52% / 0.45), hsl(38 96% 54% / 0.4))',
-                maxHeight: '100%',
-                minHeight: progress > 0 ? 2 : 0,
+                  ? 'linear-gradient(to top, hsl(14 90% 48%), hsl(38 96% 54%))'
+                  : `linear-gradient(to top, hsl(14 90% 52% / ${0.3 + (i / chartBars.length) * 0.5}), hsl(38 96% 54% / ${0.25 + (i / chartBars.length) * 0.4}))`,
+                borderRadius: '4px 4px 0 0',
+                minHeight: barProgress[i] > 0 ? 3 : 0,
+                transition: 'none',
               }}
             />
           </div>
         ))}
       </div>
-      <div className="relative h-[90px] -mx-1">
+
+      {/* SVG линия тренда */}
+      <div className="relative h-[72px] -mx-1 -mt-2">
         <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full overflow-visible">
           <defs>
-            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="hsl(14 90% 52%)" />
               <stop offset="100%" stopColor="hsl(38 96% 54%)" />
             </linearGradient>
-            <clipPath id="lineClip">
-              <rect x="0" y="-10" width={w * lineProgress} height={h + 20} />
-            </clipPath>
+            <filter id="glow2">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
           </defs>
-          <polyline
-            points={pts.join(' ')}
-            fill="none"
-            stroke="url(#lineGrad)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            clipPath="url(#lineClip)"
-          />
-          {chartBars.map((b, i) => {
-            const x = (i / (chartBars.length - 1)) * w;
-            const y = h - (b.value / maxVal) * h;
-            const visible = lineProgress > i / (chartBars.length - 1);
-            return visible ? (
-              <circle key={i} cx={x} cy={y} r="4" fill="hsl(14 90% 52%)" stroke="white" strokeWidth="2" />
-            ) : null;
-          })}
+          {lineReady && (
+            <>
+              <polyline
+                points={pts.map(([x, y]) => `${x},${y}`).join(' ')}
+                fill="none"
+                stroke="url(#lg2)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#glow2)"
+                style={{
+                  strokeDasharray: 600,
+                  strokeDashoffset: 0,
+                  animation: 'drawLine 1s cubic-bezier(0.4,0,0.2,1) forwards',
+                }}
+              />
+              {pts.map(([x, y], i) => (
+                <circle
+                  key={i}
+                  cx={x} cy={y} r="4"
+                  fill="hsl(14 90% 52%)"
+                  stroke="white"
+                  strokeWidth="2"
+                  style={{ animation: `fadeIn 0.3s ease ${i * 0.12}s both` }}
+                />
+              ))}
+            </>
+          )}
         </svg>
       </div>
-      <div className="flex justify-between mt-1">
+
+      <div className="flex justify-between -mt-1">
         {chartBars.map(b => (
           <span key={b.label} className="text-[10px] text-muted-foreground flex-1 text-center">{b.label}</span>
         ))}
