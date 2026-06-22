@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,117 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 
-const HERO_IMG = 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/93ed9fa3-4e93-44d7-bfae-2d9d5931c6e2.jpg';
+const HERO_IMG = 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/e559307e-43cc-4aac-9b6d-4bd7d35ee19d.jpg';
+
+const chartBars = [
+  { label: 'Янв', value: 38 },
+  { label: 'Фев', value: 52 },
+  { label: 'Мар', value: 61 },
+  { label: 'Апр', value: 47 },
+  { label: 'Май', value: 75 },
+  { label: 'Июн', value: 88 },
+  { label: 'Июл', value: 95 },
+];
+
+const AnimatedChart = () => {
+  const [progress, setProgress] = useState(0);
+  const [lineProgress, setLineProgress] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let start: number | null = null;
+    const duration = 1800;
+    const animate = (ts: number) => {
+      if (!start) start = ts;
+      const elapsed = ts - start;
+      const p = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setProgress(eased);
+      setLineProgress(eased);
+      if (p < 1) rafRef.current = requestAnimationFrame(animate);
+    };
+    const timer = setTimeout(() => {
+      rafRef.current = requestAnimationFrame(animate);
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const maxVal = Math.max(...chartBars.map(b => b.value));
+  const w = 280;
+  const h = 90;
+  const pts = chartBars.map((b, i) => {
+    const x = (i / (chartBars.length - 1)) * w;
+    const y = h - (b.value / maxVal) * h;
+    return `${x},${y}`;
+  });
+  const lineD = `M ${pts.join(' L ')}`;
+
+  return (
+    <div className="absolute bottom-5 left-5 right-5 glass rounded-2xl p-4 shadow-lg">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-bold text-foreground/80 font-display">Рост проектов</span>
+        <span className="text-xs font-semibold text-green-600 flex items-center gap-1">
+          <Icon name="TrendingUp" size={13} /> +148% за год
+        </span>
+      </div>
+      <div className="flex items-end gap-1.5 h-16 mb-2">
+        {chartBars.map((b, i) => (
+          <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
+            <div
+              className="w-full rounded-t-md transition-none"
+              style={{
+                height: `${(b.value / maxVal) * 100 * progress}%`,
+                background: i === chartBars.length - 1
+                  ? 'linear-gradient(to top, hsl(14 90% 52%), hsl(38 96% 54%))'
+                  : 'linear-gradient(to top, hsl(14 90% 52% / 0.45), hsl(38 96% 54% / 0.4))',
+                maxHeight: '100%',
+                minHeight: progress > 0 ? 2 : 0,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="relative h-[90px] -mx-1">
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="hsl(14 90% 52%)" />
+              <stop offset="100%" stopColor="hsl(38 96% 54%)" />
+            </linearGradient>
+            <clipPath id="lineClip">
+              <rect x="0" y="-10" width={w * lineProgress} height={h + 20} />
+            </clipPath>
+          </defs>
+          <polyline
+            points={pts.join(' ')}
+            fill="none"
+            stroke="url(#lineGrad)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            clipPath="url(#lineClip)"
+          />
+          {chartBars.map((b, i) => {
+            const x = (i / (chartBars.length - 1)) * w;
+            const y = h - (b.value / maxVal) * h;
+            const visible = lineProgress > i / (chartBars.length - 1);
+            return visible ? (
+              <circle key={i} cx={x} cy={y} r="4" fill="hsl(14 90% 52%)" stroke="white" strokeWidth="2" />
+            ) : null;
+          })}
+        </svg>
+      </div>
+      <div className="flex justify-between mt-1">
+        {chartBars.map(b => (
+          <span key={b.label} className="text-[10px] text-muted-foreground flex-1 text-center">{b.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const navLinks = [
   { label: 'Главная', href: '#hero' },
@@ -111,8 +221,17 @@ const Index = () => {
             </div>
           </div>
           <div className="relative reveal" style={{ animationDelay: '0.15s' }}>
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-accent/30 blur-3xl rounded-full" />
-            <img src={HERO_IMG} alt="Online projects" className="relative rounded-[2rem] w-full aspect-square object-cover animate-float glow" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent/20 blur-3xl rounded-full" />
+            <div className="relative rounded-[2rem] overflow-hidden animate-float glow">
+              <img src={HERO_IMG} alt="Команда онлайн проектов" className="w-full aspect-square object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-[2rem]" />
+              <AnimatedChart />
+            </div>
+            {/* Floating badge */}
+            <div className="absolute -top-4 -right-4 glass rounded-2xl px-4 py-3 shadow-lg flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-sm font-semibold">Онлайн 24/7</span>
+            </div>
           </div>
         </div>
 
