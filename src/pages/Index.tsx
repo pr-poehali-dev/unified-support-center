@@ -6,7 +6,40 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 
-const HERO_IMG = 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/a6f45dab-8c6e-4bb8-99c8-880240468dc5.jpg';
+const heroSlides = [
+  {
+    img: 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/a6f45dab-8c6e-4bb8-99c8-880240468dc5.jpg',
+    icon: 'Users',
+    badge: 'Команда экспертов',
+    title: 'Поддержка и продвижение онлайн проектов',
+    desc: 'Единый центр, где ваш проект запускают, развивают и сопровождают команды экспертов.',
+    chart: true,
+  },
+  {
+    img: 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/34657fe9-5382-4b95-a094-586ab1761098.jpg',
+    icon: 'Zap',
+    badge: 'Скорость реакции',
+    title: 'Быстрое внесение правок в течение 24 часов',
+    desc: 'Любые изменения в проекте выполняем оперативно — без очередей и лишних согласований.',
+    chart: false,
+  },
+  {
+    img: 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/32e4047f-2230-4b81-95da-0858abbc3eb3.jpg',
+    icon: 'UserCheck',
+    badge: 'Личный контакт',
+    title: 'Персональный аккаунт-менеджер',
+    desc: 'Ваш выделенный менеджер всегда на связи, знает ваш проект и решает вопросы лично.',
+    chart: false,
+  },
+  {
+    img: 'https://cdn.poehali.dev/projects/e1872486-b796-4685-9d83-cc9ae81adc57/files/90c18a10-0414-4d03-8ad3-626cc9dc5ac7.jpg',
+    icon: 'BarChart3',
+    badge: 'Прозрачность',
+    title: 'Ежемесячная отчётность и бесперебойная работа 24/7',
+    desc: 'Получайте чёткие отчёты каждый месяц и будьте уверены, что проект работает без остановок.',
+    chart: false,
+  },
+];
 
 // Среднегодовой рост 120%: каждый следующий месяц ~на 10% больше предыдущего
 const chartBars = [
@@ -148,6 +181,110 @@ const AnimatedChart = () => {
   );
 };
 
+const HeroSlider = () => {
+  const [current, setCurrent] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const goTo = (idx: number) => {
+    if (animating || idx === current) return;
+    setAnimating(true);
+    setTimeout(() => {
+      setCurrent(idx);
+      setAnimating(false);
+    }, 350);
+  };
+
+  const prev = () => goTo((current - 1 + heroSlides.length) % heroSlides.length);
+  const next = () => goTo((current + 1) % heroSlides.length);
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => next(), 5000);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [current]);
+
+  const slide = heroSlides[current];
+
+  return (
+    <div className="relative reveal" style={{ animationDelay: '0.15s' }}>
+      <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent/20 blur-3xl rounded-full pointer-events-none" />
+
+      {/* Slide image */}
+      <div className="relative rounded-[2rem] overflow-hidden glow">
+        <div
+          className="w-full aspect-square"
+          style={{
+            opacity: animating ? 0 : 1,
+            transition: 'opacity 0.35s ease',
+          }}
+        >
+          <img
+            src={slide.img}
+            alt={slide.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+          {/* Slide caption */}
+          <div
+            className="absolute bottom-0 left-0 right-0 p-6"
+            style={{ opacity: animating ? 0 : 1, transition: 'opacity 0.35s ease 0.1s' }}
+          >
+            <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">
+              <Icon name={slide.icon as Parameters<typeof Icon>[0]['name']} size={12} />
+              {slide.badge}
+            </span>
+            <p className="text-white font-display font-bold text-base leading-snug drop-shadow-md">
+              {slide.title}
+            </p>
+          </div>
+
+          {/* Chart on first slide */}
+          {slide.chart && <AnimatedChart key={current} />}
+        </div>
+
+        {/* Arrows */}
+        <button
+          onClick={prev}
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/35 flex items-center justify-center text-white transition-all z-10"
+        >
+          <Icon name="ChevronLeft" size={18} />
+        </button>
+        <button
+          onClick={next}
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/35 flex items-center justify-center text-white transition-all z-10"
+        >
+          <Icon name="ChevronRight" size={18} />
+        </button>
+      </div>
+
+      {/* Dots */}
+      <div className="flex justify-center gap-2 mt-4">
+        {heroSlides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            className="transition-all duration-300 rounded-full"
+            style={{
+              width: i === current ? 28 : 8,
+              height: 8,
+              background: i === current
+                ? 'linear-gradient(to right, hsl(14 90% 52%), hsl(38 96% 54%))'
+                : 'hsl(220 18% 85%)',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Floating badge */}
+      <div className="absolute -top-4 -right-4 glass rounded-2xl px-4 py-3 shadow-lg flex items-center gap-2 z-10">
+        <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-sm font-semibold">Онлайн 24/7</span>
+      </div>
+    </div>
+  );
+};
+
 const navLinks = [
   { label: 'Главная', href: '#hero' },
   { label: 'О Центре', href: '#about' },
@@ -250,19 +387,7 @@ const Index = () => {
               </Button>
             </div>
           </div>
-          <div className="relative reveal" style={{ animationDelay: '0.15s' }}>
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent/20 blur-3xl rounded-full" />
-            <div className="relative rounded-[2rem] overflow-hidden animate-float glow">
-              <img src={HERO_IMG} alt="Команда онлайн проектов" className="w-full aspect-square object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-[2rem]" />
-              <AnimatedChart />
-            </div>
-            {/* Floating badge */}
-            <div className="absolute -top-4 -right-4 glass rounded-2xl px-4 py-3 shadow-lg flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-sm font-semibold">Онлайн 24/7</span>
-            </div>
-          </div>
+          <HeroSlider />
         </div>
 
         {/* Stats */}
