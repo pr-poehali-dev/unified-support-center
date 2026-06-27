@@ -351,7 +351,7 @@ const Index = () => {
             <span className="grid place-items-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent glow">
               <Icon name="Hexagon" size={20} className="text-white" />
             </span>
-            Единый<span className="text-gradient">Центр</span>
+            Ай<span className="text-gradient">ДеКса</span>
           </a>
           <nav className="hidden lg:flex items-center gap-7 text-sm text-muted-foreground">
             {navLinks.map((l) => (
